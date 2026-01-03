@@ -1,95 +1,128 @@
-#Tactile1
+# SynapTex: High-Fidelity Tactile Sensing Fabric
 
-#### Project Website(项目网页): https://github.com/1250554826/SynapTex
+<div align="center">
+[**Firmware**](#firmware) | [**Visualizer**](#visualization) | [**Simulation**](#mujoco-simulation)
 
+</div>
 
-## 1. Firmware
+## 📖 Introduction (项目简介)
 
-(1) Load the [arduino code](/arduino_code) to the arduino. 
+**SynapTex** is an advanced tactile sensing system designed for flexible fabrics. It provides high-resolution real-time pressure monitoring with minimized crosstalk. This project integrates an embedded firmware solution (Arduino) with a robust Python-based visualization toolkit, supporting both real-world hardware and MuJoCo simulations.
 
-      MatrixArray_naive 为初始版本的arduino代码，无标定；
-      MatrixArray_normal 为正常标定版本的arduino代码，适合普适范围（可感知的受压面大，但串扰偏大一些）；
-      MatrixArray_update 为更新标定版本的arduino代码，适合精细范围（仅限于感知受压面小的物体，串扰小），同时MuJoCo仿真效果好
+Key features:
+- **Adaptive Calibration**: Algorithms optimized for different contact surface areas.
+- **Real-time Visualization**: Multi-thread processing for low-latency feedback.
+- **Simulation Ready**: Full support for MuJoCo physics engine integration.
 
-## 2. Python
+---
 
-(1) Setup environment
+## 🛠️ Hardware & Firmware (固件配置)
 
-        conda create --name SynapTex python=3.10
-        conda activate SynapTex
-        
-        pip install pyserial
-        pip install opencv-python==4.6.0.66
-        pip install scipy
-        pip install numpy==1.23.0
-        pip install mujoco==3.3.0
+The firmware is designed to run on Arduino-compatible microcontrollers. We provide three specialized versions to suit different experimental needs:
 
+| Version                  | Description                                                  | Recommended Use Case                                    |
+| :----------------------- | :----------------------------------------------------------- | :------------------------------------------------------ |
+| **`MatrixArray_naive`**  | Raw data output without calibration.                         | Debugging hardware connections.                         |
+| **`MatrixArray_normal`** | **Standard Calibration**. Balances sensitivity and crosstalk. | **General Purpose** (Large contact areas).              |
+| **`MatrixArray_update`** | **Precision Calibration**. High sensitivity with minimal crosstalk. | Fine-grained sensing (Small objects) & **Simulations**. |
 
-(2) Start python visualization(Test Real)
+> **Setup**: Upload the `.ino` file corresponding to your use case to the MCU.
 
-注意：运行触觉布料的可视化测试脚本需要将【布料硬件】连接上位机（电脑）。建议烧入MatrixArray_normal代码。
+---
 
-        cd python/real
-        python3 multi_thread_contact_v0.py
+## 💻 Software Environment (软件环境)
 
-声明：关于标准版的布料，应该运行``multi_thread_contact_new_v0.py``， 这是由于代码中应遵循以下代码逻辑：
+### 1. Prerequisites
 
-                if current is not None and len(current) == 16:  # 如果当前帧完整
-                    current_array = np.array(current)  # 将当前帧转为numpy数组
-                    temp = 0
-                    # 重新排列行数据，调整帧的顺序
-                    # 标准版
-                    new[:15, :] = current_array[:15, :] + temp  # 前15行保持不变
-                        
-                    # 定制版
-                    # new[8, :] = current_array[15, :] + temp
-                    # new[9, :] = current_array[14, :] + temp
-                    # new[10, :] = current_array[13, :] + temp
-                    # new[11, :] = current_array[12, :] + temp
-                    # new[12, :] = current_array[11, :] + temp
-                    # new[13, :] = current_array[10, :] + temp
-                    # new[14, :] = current_array[9, :] + temp
-                    # new[15, :] = current_array[8, :] + temp
+We recommend managing dependencies via Conda to avoid conflicts.
 
-为了上位机触觉感知可视化图像效果正常，对于标准版布料，其余的运行代码都要使用该逻辑，可以自行注释更改代码；而应用换行代码的是定制版布料。
+```python
+# Create and activate environment
+conda create --name SynapTex python=3.10
+conda activate SynapTex
 
+# Install core dependencies
+pip install pyserial opencv-python==4.6.0.66 scipy numpy==1.23.0 mujoco==3.3.0
+```
 
+### 2. Visualization (Real-world Testing)
 
-(3)【额外补充】基于MuJoCo仿真的触觉传感器测试(Test Sim)
+To visualize data from the tactile fabric:
 
-        cd python/sim
-        python3 sim_touch_vis.py
+1. Connect the hardware to your PC.
+2. Ensure `MatrixArray_normal` (or compatible firmware) is running.
+3. Execute the multi-thread visualizer:
 
-运行``sim_touch_vis.py``代码的测试效果如下：
-![img1](G:\迅雷下载\STF_touch_visualization-master(2)\STF_touch_visualization-master\image\img1.png)
+Bash
 
-## 3. Error Collection
+```
+python3 python/real/multi_thread_contact_v0.py
+```
 
-注意： 
+#### ⚙️ Matrix Mapping Configuration
 
-1) 串口端口的设置（``Linux``系统和``Windows``系统设置不同），例如
-        
-        Linux系统: '/dev/ttyUSB1'
-        Windows系统: 'COM6'
+Depending on your fabric version (Standard vs. Customized), you may need to adjust the data mapping logic in the Python script.
 
-2) 在MuJoCo仿真中，不同的XML文件路径要与自己的电脑一致，比如项目其中的一个XML文件路径设置为：
+- **Standard Version**: Uses sequential mapping (Default).
+- **Customized Version**: Requires row re-ordering (lines 8-15).
 
+> *Check the comments in `multi_thread_contact_v0.py` to toggle between Standard and Customized mapping modes.*
 
-3) 在``multi_thread_contact_v0.py``代码中，阈值和噪声缩放因子可以自行调试，更改不同的数值来调整可视化中的噪声串扰：
+------
 
-        # 定义阈值和噪声缩放因子
-        THRESHOLD = 6
-        NOISE_SCALE = 20
+## 🤖 MuJoCo Simulation (仿真测试)
 
-``Reference``: https://binghao-huang.github.io/3D-ViTac/
+SynapTex includes a simulation bridge to test tactile algorithms in a virtual environment before deploying to hardware.
 
-## Citation
-If you use this project in your work, please cite the following:
+Bash
 
-      @misc{jnu2025SynapTex,
-      title={SynapTex},
-      author={Ma, Jun and Yang},
-      year={2025},
-      howpublished={\url{https://github.com/1250554826/SynapTex}},
+```
+cd python/sim
+python3 sim_touch_vis.py
+```
+
+*Note: Ensure your XML file paths in the script match your local directory structure.*
+
+------
+
+## 🔧 Troubleshooting & Configuration
+
+### Serial Port Setup
+
+Modify the port variable in the Python scripts according to your OS:
+
+- **Linux**: `/dev/ttyUSB*` (e.g., `/dev/ttyUSB1`)
+- **Windows**: `COM*` (e.g., `COM6`)
+
+### Noise & Thresholding
+
+Adjust the visualization sensitivity in `multi_thread_contact_v0.py` if the signal is too noisy:
+
+Python
+
+```
+THRESHOLD = 6       # Minimum pressure value to register a touch
+NOISE_SCALE = 20    # Gain factor for visualization
+```
+
+------
+
+## 📜 Citation & Acknowledgements
+
+This project builds upon the foundational work of 3D-ViTac. If you use SynapTex in your research, please cite:
+
+代码段
+
+```
+@misc{jnu2025SynapTex,
+  title={SynapTex: A Smart Tactile Sensing Fabric},
+  author={Ma, Jun and Yang},
+  year={2025},
+  howpublished={\url{[https://github.com/1250554826/SynapTex](https://github.com/1250554826/SynapTex)}},
 }
-}
+```
+
+**References:**
+
+- [3D-ViTac Project](https://binghao-huang.github.io/3D-ViTac/)
+
